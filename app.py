@@ -11,6 +11,7 @@ import datetime
 from dateutil import parser
 from pathlib import Path
 
+
 app = flask.Flask(__name__)
 CORS(app)
 app.config["DEBUG"] = False
