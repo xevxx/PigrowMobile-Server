@@ -9,6 +9,7 @@ import subprocess
 import json
 import datetime
 from dateutil import parser
+from pathlib import Path
 
 app = flask.Flask(__name__)
 CORS(app)
@@ -159,11 +160,16 @@ def api_GetCurrentSensors(local):
 def api_ReadSensor(sensorname,typeSensor='modular'):
     sensors = api_GetCurrentSensors(True)
     sensorSplit = '\n'
+    module_path = ''
     if sensorname in sensors:
         sensor = sensors[sensorname]
-        module_path = [home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py", "location=" + sensor['loc'] ,"name=" + sensorname]
+        sensorScript = Path(home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py")
+        if sensor['type'] and sensorScript.is_file():
+            module_path = [home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py", "location=" + sensor['loc'] ,"name=" + sensorname]
     if typeSensor.lower() == 'chirp':
-        module_path = [home_path + "/scripts/sensors/log_" + sensor['type'] + ".py", "address=" + sensor['loc'].split(":")[1]]
+        sensorScript = Path(home_path + "/scripts/sensors/log_" + sensor['type'] + ".py")
+        if sensor['type'] and sensorScript.is_file():
+            module_path = [home_path + "/scripts/sensors/log_" + sensor['type'] + ".py", "address=" + sensor['loc'].split(":")[1]]
         sensorSplit = '>'
         if sensor["extra"]:
             minmax = sensor['extra'].split(" ")
@@ -171,12 +177,15 @@ def api_ReadSensor(sensorname,typeSensor='modular'):
             max = minmax[1].split(":")[1]
             module_path.append("min=" + min)
             module_path.append("max=" + max )
-
-    reading = RunSubprocess(module_path)
-    line = reading.stdout.strip()
-    line = line.replace('Written; ' ,'')
-    obj,error = ParseReading(line, typeSensor, None, sensorSplit)
-    obj["sensortype"] = sensorname
+    if module_path:
+        reading = RunSubprocess(module_path)
+        line = reading.stdout.strip()
+        line = line.replace('Written; ' ,'')
+        obj,error = ParseReading(line, typeSensor, None, sensorSplit)
+        obj["sensortype"] = sensorname
+    else:
+        obj = {}
+        obj["sensortype"] = sensorname
     #objNamed = {sensorname: obj}
         
     return jsonify(obj)
@@ -495,5 +504,3 @@ def handle_invalid_usage(error):
 
 # avail able on local lan only
 app.run(host= '0.0.0.0')
-
-
