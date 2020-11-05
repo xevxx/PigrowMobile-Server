@@ -10,7 +10,8 @@ import json
 import datetime
 from dateutil import parser
 from pathlib import Path
-
+import glob
+import re
 
 app = flask.Flask(__name__)
 CORS(app)
@@ -481,6 +482,49 @@ def ParseReading(line, typeSensor, options=None, lineSplit = '>'):
                 error = 'incorrect type maybe, default is modular'
     
     return obj,error
+
+# Get all .py files in folder
+@app.route('/api/v1/config/getfolderlisting/<folderPath>/<filePrefix>/<fileType>', defaults={'local': None},  methods=['GET'])
+def api_GetFolderListing(folderPath, filePrefix, fileType, local):
+    try:
+        listingObj = []
+        folderPath = folderPath.replace('-_','/')
+        listings = glob.glob(os.path.join(home_path +  folderPath,"*." + fileType))
+        if listings:
+            for l in listings:
+                listing = {}
+                fileName = os.path.basename(l)
+                fileName = str(fileName).replace(filePrefix,'').replace('.'+ fileType,'')
+                fileName = re.sub('^[^A-Za-z]*', '', fileName)
+                listing['name'] = fileName.replace('_',' ')
+                listing['id'] = fileName
+                listing['relPath'] = str(l).replace(home_path,'').replace('/','-_')
+                listingObj.append(listing)
+        if local:
+            return listingObj
+        else:
+            return jsonify(listingObj)
+    except (Exception) as e:
+        return jsonify(e)
+
+# Get simple file response
+@app.route('/api/v1/config/getinfo/<relPath>',  methods=['GET'])
+def api_GetInfo(relPath):
+    response = ''
+    try:
+        folderPath = relPath.replace('-_','/')
+        filePath = os.path.join(home_path +  folderPath)
+        if '/gui/info_modules' in folderPath:
+            info = RunSubprocess(filePath)
+            response = info.stdout
+            if not response:
+                response = 'No results'
+        else:
+            response = 'Not Valid!'
+        return response
+    except (Exception) as e:
+        return jsonify(e)
+
 
 class InvalidUsage(Exception):
     status_code = 400
