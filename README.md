@@ -2,9 +2,10 @@
 
 Flask API
 
-requires
-pip3 install flask
-pip3 install flask_cors
+requires </br>
+pip3 install flask </br>
+pip3 install flask_cors </br>
+pip3 install ciso8601
 
 run on server as:
 
