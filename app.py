@@ -183,7 +183,7 @@ def api_GetCurrentSensors(local):
                 if line.startswith('sensor_'):
                     linetuple = line.split('_')
                     if linetuple[1] not in sensorsFull:
-                        sensorsFull[linetuple[1].lower()] = {linetuple[2].split('=')[0]:line.split('=')[1]}
+                        sensorsFull[linetuple[1]] = {linetuple[2].split('=')[0]:line.split('=')[1]}
                     else:
                         sensorsFull[linetuple[1]][linetuple[2].split('=')[0]] =  line.split('=')[1]
     except:
@@ -203,33 +203,37 @@ def api_ReadSensor(sensorname,typeSensor='modular'):
     sensors = api_GetCurrentSensors(True)
     sensorSplit = '\n'
     module_path = ''
-    if sensorname in sensors:
-        sensor = sensors[sensorname]
-        sensorScript = Path(home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py")
-        if sensor['type'] and sensorScript.is_file():
-            module_path = [home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py", "location=" + sensor['loc'] ,"name=" + sensorname]
-    if typeSensor.lower() == 'chirp':
-        sensorScript = Path(home_path + "/scripts/sensors/log_" + sensor['type'] + ".py")
-        if sensor['type'] and sensorScript.is_file():
-            module_path = [home_path + "/scripts/sensors/log_" + sensor['type'] + ".py", "address=" + sensor['loc'].split(":")[1]]
-        sensorSplit = '>'
-        if sensor["extra"]:
-            minmax = sensor['extra'].split(" ")
-            min = minmax[0].split(":")[1]
-            max = minmax[1].split(":")[1]
-            module_path.append("min=" + min)
-            module_path.append("max=" + max )
-    if module_path:
-        reading = RunSubprocess(module_path)
-        line = reading.stdout.strip()
-        line = line.replace('Written; ' ,'')
-        obj,error = ParseReading(line, typeSensor, None, sensorSplit)
-        obj["sensortype"] = sensorname
-    else:
+    try:
+        if sensorname in sensors:
+            sensor = sensors[sensorname]
+            sensorScript = Path(home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py")
+            if sensor['type'] and sensorScript.is_file():
+                module_path = [home_path + "/scripts/gui/sensor_modules/sensor_" + sensor['type'] + ".py", "location=" + sensor['loc'] ,"name=" + sensorname]
+        if typeSensor.lower() == 'chirp':
+            sensorScript = Path(home_path + "/scripts/sensors/log_" + sensor['type'] + ".py")
+            if sensor['type'] and sensorScript.is_file():
+                module_path = [home_path + "/scripts/sensors/log_" + sensor['type'] + ".py", "address=" + sensor['loc'].split(":")[1]]
+            sensorSplit = '>'
+            if sensor["extra"]:
+                minmax = sensor['extra'].split(" ")
+                min = minmax[0].split(":")[1]
+                max = minmax[1].split(":")[1]
+                module_path.append("min=" + min)
+                module_path.append("max=" + max )
+        if module_path:
+            reading = RunSubprocess(module_path)
+            line = reading.stdout.strip()
+            line = line.replace('Written; ' ,'')
+            obj,error = ParseReading(line, typeSensor, None, sensorSplit)
+            obj["sensortype"] = sensorname
+        else:
+            obj = {}
+            obj["sensortype"] = sensorname
+        #objNamed = {sensorname: obj}
+    except (Exception) as e:
         obj = {}
         obj["sensortype"] = sensorname
-    #objNamed = {sensorname: obj}
-        
+
     return jsonify(obj)
 
 
@@ -380,8 +384,8 @@ def api_GetLog(logname,logtype='modular'):
     
     sensorsText = api_GetCurrentSensors(True)
 
-    if logname.lower() in sensors:
-        sensor = sensors[logname]
+    if logname in sensorsText:
+        sensor = sensorsText[logname]
         logPath = sensor['log']
 
     logResults,error = ParseLog(logPath,logtype)
